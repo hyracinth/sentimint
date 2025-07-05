@@ -1,2 +1,0 @@
-pip install dash dash-bootstrap-components yfinance pandas scikit-learn vaderSentiment
-pip install python-dotenv black
