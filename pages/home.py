@@ -1,4 +1,3 @@
-print("home.py loaded")
 import dash
 from dash import Input, Output, html, dcc
 import yfinance as yf
@@ -50,6 +49,20 @@ layout = html.Div(
                             ),
                             width="auto",
                         ),
+                        dbc.Col(
+                            dcc.Checklist(
+                                id="show-regression",
+                                options=[
+                                    {
+                                        "label": "Show Linear Regression",
+                                        "value": "regression",
+                                    }
+                                ],
+                                value=[],
+                                style={"marginTop": "8px"},
+                            ),
+                            width="auto",
+                        ),
                     ],
                     className="mb-3",
                 ),
@@ -65,8 +78,9 @@ layout = html.Div(
     Output("price-chart", "figure"),
     Input("ticker-input", "value"),
     Input("ticker-period-dropdown", "value"),
+    Input("show-regression", "value"),
 )
-def update_price_chart(ticker, period):
+def update_price_chart(ticker, period, toggle_regression):
     if not ticker:
         return px.line(title="Enter a ticker to see the price chart")
 
@@ -75,15 +89,40 @@ def update_price_chart(ticker, period):
         if df.empty:
             return px.line(title=f"No data found for {ticker}")
 
-        fig = px.scatter(
-            df,
-            x=df.index,
-            y="Close",
-            title=f"{ticker.upper()} Price Chart",
-            labels={"x": "Date", "Close": "Price"},
-            # template="plotly_dark",
-        )
+        #TODO This does not work...
+        trendline = "ols" if "regression" in toggle_regression else None
+
+        if trendline:
+            # Need to convert index to numeric for trendline because ols expects number for x-axis
+            df = df.copy()
+            df["date_num"] = df.index.astype("int64") // 10**9  # Convert to seconds since epoch
+       
+            fig = px.scatter(
+                df,
+                x="date_num",
+                y="Close",
+                title=f"{ticker.upper()} Price Chart",
+                labels={"date_num": "Date", "Close": "Price"},
+                trendline=trendline,
+                # template="plotly_dark",
+            )
+
+            # Reformat x-axis to show dates
+            fig.update_xaxes(
+                tickvals=df["date_num"][::max(1, len(df)//10)],
+                ticktext=[d.strftime("%Y-%m-%d") for d in df.index[::max(1, len(df)//10)]],
+                title_text="Date"
+            )
+        else:
+            fig = px.scatter(
+                df,
+                x=df.index,
+                y="Close",
+                title=f"{ticker.upper()} Price Chart",
+                labels={"x": "Date", "Close": "Price"},
+            )
     except Exception as e:
         fig = px.line(title=f"Error fetching data for {ticker}: {str(e)}")
 
     return fig
+
