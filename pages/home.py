@@ -89,7 +89,6 @@ def update_price_chart(ticker, period, toggle_regression):
         if df.empty:
             return px.line(title=f"No data found for {ticker}")
 
-        #TODO This does not work...
         trendline = "ols" if "regression" in toggle_regression else None
 
         if trendline:
